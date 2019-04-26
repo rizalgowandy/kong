@@ -94,21 +94,61 @@ local function execute(args)
 
   if args.command == "list" then
     if schema_state.needs_bootstrap then
-      log("database needs bootstrapping; run 'kong migrations bootstrap'")
-      os.exit(3)
+      if schema_state.legacy_invalid_state then
+        -- legacy: migration from 0.14 to 1.0 cannot be performed
+        if schema_state.legacy_missing_component then
+          log("migrations can only be listed on a %s %s that has been " ..
+              "upgraded to 1.0, but the current one seems to be older " ..
+              "than 0.14 (missing migrations for '%s')",
+              db.strategy, db.infos.db_desc,
+              schema_state.legacy_missing_component)
+
+          os.exit(2)
+        end
+
+        if schema_state.legacy_missing_migration then
+          log("migrations can only be listed on a %s %s that has been " ..
+              "upgraded to 1.0, but the current one seems to be older " ..
+              "than 0.14 (missing migration '%s' for '%s')",
+              db.strategy, db.infos.db_desc,
+              schema_state.legacy_missing_migration,
+              schema_state.legacy_missing_component)
+
+          os.exit(2)
+        end
+
+        log("migrations can only be listed on a %s %s that has been " ..
+            "upgraded to 1.0, but the current one seems to be older than " ..
+            "0.14 (missing migrations)", db.strategy, db.infos.db_desc)
+
+        os.exit(2)
+
+      elseif not schema_state.legacy_is_014 then
+        log("database needs bootstrapping; run 'kong migrations bootstrap'")
+        os.exit(3)
+      end
     end
 
+    local r = ""
+
     if schema_state.executed_migrations then
+      r = "\n"
       log("executed migrations:\n%s", schema_state.executed_migrations)
     end
 
-    migrations_utils.print_state(schema_state)
-
     if schema_state.pending_migrations then
-      os.exit(4)
+      r = "\n"
+      log("%spending migrations:\n%s", r, schema_state.pending_migrations)
     end
 
     if schema_state.new_migrations then
+      log("%snew migrations available:\n%s\n\n%s", r,
+          schema_state.new_migrations, "run 'kong migrations up' to proceed")
+    end
+
+    if schema_state.pending_migrations then
+      os.exit(4)
+    elseif schema_state.new_migrations then
       os.exit(5)
     end
 

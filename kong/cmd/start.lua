@@ -7,6 +7,10 @@ local kill = require "kong.cmd.utils.kill"
 local log = require "kong.cmd.utils.log"
 local DB = require "kong.db"
 
+
+local fmt = string.format
+
+
 local function execute(args)
   args.db_timeout = args.db_timeout * 1000
   args.lock_timeout = args.lock_timeout
@@ -30,20 +34,44 @@ local function execute(args)
   assert(db:init_connector())
 
   local schema_state = assert(db:schema_state())
-
   local err
 
   xpcall(function()
     assert(prefix_handler.prepare_prefix(conf, args.nginx_conf))
 
-    if not schema_state:is_up_to_date() then
-      if args.run_migrations then
-        migrations_utils.up(schema_state, db, {
-          ttl = args.lock_timeout,
-        })
+    if not schema_state:is_up_to_date() and args.run_migrations then
+      migrations_utils.up(schema_state, db, {
+        ttl = args.lock_timeout,
+      })
 
-      else
-        migrations_utils.print_state(schema_state)
+      schema_state = assert(db:schema_state())
+    end
+
+    if not schema_state:is_up_to_date() then
+      if schema_state.needs_bootstrap then
+        if schema_state.legacy_invalid_state then
+          error(fmt("cannot start kong with a legacy %s, upgrade to 0.14 " ..
+                    "first, and run 'kong migrations up'", db.infos.db_desc))
+
+        elseif not schema_state.legacy_is_014 then
+          error("database needs bootstrapping; run 'kong migrations bootstrap'")
+        end
+      end
+
+      if schema_state.new_migrations then
+        error("new migrations available; run 'kong migrations list'")
+      end
+    end
+
+    if schema_state.missing_migrations or schema_state.pending_migrations then
+      if schema_state.missing_migrations then
+        log.warn("database is missing some migrations:\n%s",
+                 schema_state.missing_migrations)
+      end
+
+      if schema_state.pending_migrations then
+        log.info("database has pending migrations:\n%s",
+                 schema_state.pending_migrations)
       end
     end
 

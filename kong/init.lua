@@ -333,17 +333,21 @@ function Kong.init()
   assert(db:init_connector())
 
   schema_state = assert(db:schema_state())
-  if schema_state.needs_bootstrap  then
-    error("database needs bootstrap; run 'kong migrations bootstrap'")
+  if not schema_state:is_up_to_date() then
+    if schema_state.needs_bootstrap  then
+      if schema_state.legacy_invalid_state then
+        error(string.format("cannot start kong with a legacy %s, upgrade " ..
+                            "to 0.14 first, and run 'kong migrations up'", db.infos.db_desc))
 
-  elseif schema_state.new_migrations then
-    error("new migrations available; run 'kong migrations list'")
+      elseif not schema_state.legacy_is_014 then
+        error("database needs bootstrapping; run 'kong migrations bootstrap'")
+      end
+    end
+
+    if schema_state.new_migrations then
+      error("new migrations available; run 'kong migrations list'")
+    end
   end
-  --[[
-  if schema_state.pending_migrations then
-    assert(db:load_pending_migrations(schema_state.pending_migrations))
-  end
-  --]]
 
   assert(db:connect())
   assert(db.plugins:check_db_against_config(config.loaded_plugins))

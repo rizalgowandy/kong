@@ -8,37 +8,6 @@ local MIGRATIONS_MUTEX_KEY = "migrations"
 local NOT_LEADER_MSG = "aborted: another node is performing database changes"
 
 
-local function print_state(schema_state, lvl)
-  local elvl = lvl or "info"
-
-  if schema_state.needs_bootstrap then
-    log[elvl]("database needs bootstrapping; run 'kong migrations bootstrap'")
-    return
-  end
-
-  if schema_state.missing_migrations then
-    local mlvl = lvl or "warn"
-    log[mlvl]("database is missing some migrations:\n%s",
-              schema_state.missing_migrations)
-  end
-
-  if schema_state.pending_migrations then
-    log[elvl]("database has pending migrations:\n%s",
-              schema_state.pending_migrations)
-  end
-
-  if schema_state.new_migrations then
-    log[elvl]("database has new migrations available:\n%s\n%s",
-              schema_state.new_migrations,
-              "run 'kong migrations up' to proceed")
-
-  elseif not schema_state.pending_migrations
-     and not schema_state.missing_migrations then
-    log("database is up-to-date")
-  end
-end
-
-
 local function bootstrap(schema_state, db, ttl)
   if schema_state.needs_bootstrap then
     if schema_state.legacy_is_014 then
@@ -47,7 +16,7 @@ local function bootstrap(schema_state, db, ttl)
     end
 
     if schema_state.legacy_invalid_state then
-      error(fmt("cannot bootstrap a non-empty %s, upgrade to 0.14 first," ..
+      error(fmt("cannot bootstrap a non-empty %s, upgrade to 0.14 first, " ..
                 "and run 'kong migrations up'", db.infos.db_desc))
     end
 
@@ -250,5 +219,4 @@ return {
   reset = reset,
   finish = finish,
   bootstrap = bootstrap,
-  print_state = print_state,
 }
