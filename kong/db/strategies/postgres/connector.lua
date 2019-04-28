@@ -372,7 +372,7 @@ function _mt:setkeepalive()
 end
 
 
-function _mt:acquire_lock()
+function _mt:acquire_query_semaphore_resource()
   if not self.sem then
     return true
   end
@@ -393,7 +393,7 @@ function _mt:acquire_lock()
 end
 
 
-function _mt:release_lock()
+function _mt:release_query_semaphore_resource()
   if not self.sem then
     return true
   end
@@ -413,7 +413,7 @@ function _mt:query(sql)
   local res, err, partial, num_queries
 
   local ok
-  ok, err = self:acquire_lock()
+  ok, err = self:acquire_query_semaphore_resource()
   if not ok then
     return nil, "error acquiring query semaphore: " .. err
   end
@@ -426,7 +426,7 @@ function _mt:query(sql)
     local connection
     connection, err = connect(self.config)
     if not connection then
-      self:release_lock()
+      self:release_query_semaphore_resource()
       return nil, err
     end
 
@@ -436,11 +436,11 @@ function _mt:query(sql)
   end
 
   if res then
-    self:release_lock()
+    self:release_query_semaphore_resource()
     return res, nil, partial, num_queries or err
   end
 
-  self:release_lock()
+  self:release_query_semaphore_resource()
   return nil, err, partial, num_queries
 end
 
