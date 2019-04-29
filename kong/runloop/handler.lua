@@ -35,8 +35,10 @@ local ngx_now     = ngx.now
 local re_match    = ngx.re.match
 local re_find     = ngx.re.find
 local update_time = ngx.update_time
+local timer_at    = ngx.timer.at
 local subsystem   = ngx.config.subsystem
 local unpack      = unpack
+local hostname_type = utils.hostname_type
 
 
 local ERR         = ngx.ERR
@@ -60,6 +62,17 @@ local build_router_timeout
 local function get_now()
   update_time()
   return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
+
+
+local function prewarm_hostnames(premature, hostnames, len)
+  if premature then
+    return
+  end
+
+  for i = 1, len do
+    kong.dns.toip(hostnames[i])
+  end
 end
 
 
@@ -89,12 +102,28 @@ do
   local function build_services_init_cache(db)
     local services_init_cache = {}
 
+    local hostnames = {}
+    local hostnames_len = 0
+    local visited = {}
+    local service_host
+
     for service, err in db.services:each(1000) do
       if err then
         return nil, err
       end
 
+      service_host = service.host
+      if not visited[service_host] and hostname_type(service_host) == "name" then
+        hostnames_len = hostnames_len + 1
+        hostnames[hostnames_len] = service_host
+        visited[service_host] = true
+      end
+
       services_init_cache[service.id] = service
+    end
+
+    if hostnames_len > 0 then
+      timer_at(0, prewarm_hostnames, hostnames, hostnames_len)
     end
 
     return services_init_cache
@@ -455,6 +484,13 @@ return {
           -- only allowed because no Route is pointing to it anymore.
           log(DEBUG, "[events] Service updated, invalidating router")
           cache:invalidate("router:version")
+        end
+
+        if data.operation == "create" or
+          data.operation == "update" then
+          if hostname_type(data.entity.host) == "name" then
+            timer_at(0, prewarm_hostnames, { data.entity.host }, 1)
+          end
         end
       end, "crud", "services")
 
