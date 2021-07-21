@@ -1,10 +1,10 @@
 package = "kong"
-version = "2.4.0-0"
+version = "2.5.0-0"
 rockspec_format = "3.0"
 supported_platforms = {"linux", "macosx"}
 source = {
   url = "git://github.com/Kong/kong",
-  tag = "2.4.0"
+  tag = "2.5.0"
 }
 description = {
   summary = "Kong is a scalable and customizable API Management Layer built on top of Nginx.",
@@ -13,9 +13,9 @@ description = {
 }
 dependencies = {
   "inspect == 3.1.1",
-  "luasec == 1.0",
+  "luasec == 1.0.1",
   "luasocket == 3.0-rc1",
-  "penlight == 1.9.2",
+  "penlight == 1.10.0",
   "lua-resty-http == 0.15",
   "lua-resty-jit-uuid == 0.0.7",
   "lua-ffi-zlib == 0.5",
@@ -29,28 +29,27 @@ dependencies = {
   "lyaml == 6.2.7",
   "luasyslog == 2.0.1",
   "lua_pack == 1.0.5",
-  "lua-resty-dns-client == 6.0.0",
-  "lua-protobuf",
+  "lua-resty-dns-client == 6.0.2",
+  "lua-protobuf == 0.3.2",
   "lua-resty-worker-events == 1.0.0",
-  "lua-resty-healthcheck == 1.4.1",
+  "lua-resty-healthcheck == 1.4.2",
   "lua-resty-cookie == 0.1.0",
   "lua-resty-mlcache == 2.5.0",
   "lua-messagepack == 0.5.2",
-  "lua-resty-openssl == 0.7.2",
+  "lua-resty-openssl == 0.7.3",
   "lua-resty-counter == 0.2.1",
   "lua-resty-ipmatcher == 0.6",
   -- external Kong plugins
   "kong-plugin-azure-functions ~> 1.0",
-  "kong-plugin-zipkin ~> 1.3",
+  "kong-plugin-zipkin ~> 1.4",
   "kong-plugin-serverless-functions ~> 2.1",
-  "kong-prometheus-plugin ~> 1.2.1",
+  "kong-prometheus-plugin ~> 1.3",
   "kong-proxy-cache-plugin ~> 1.3",
   "kong-plugin-request-transformer ~> 1.3",
   "kong-plugin-session ~> 2.4",
   "kong-plugin-aws-lambda ~> 3.5",
   "kong-plugin-acme ~> 0.2",
   "kong-plugin-grpc-web ~> 0.2",
-  "kong-plugin-grpc-gateway ~> 0.1",
 }
 build = {
   type = "builtin",
@@ -68,11 +67,14 @@ build = {
     ["kong.concurrency"] = "kong/concurrency.lua",
     ["kong.globalpatches"] = "kong/globalpatches.lua",
     ["kong.error_handlers"] = "kong/error_handlers.lua",
-    ["kong.clustering"] = "kong/clustering.lua",
     ["kong.hooks"] = "kong/hooks.lua",
 
     ["kong.conf_loader"] = "kong/conf_loader/init.lua",
     ["kong.conf_loader.listeners"] = "kong/conf_loader/listeners.lua",
+
+    ["kong.clustering"] = "kong/clustering/init.lua",
+    ["kong.clustering.data_plane"] = "kong/clustering/data_plane.lua",
+    ["kong.clustering.control_plane"] = "kong/clustering/control_plane.lua",
 
     ["kong.cluster_events"] = "kong/cluster_events/init.lua",
     ["kong.cluster_events.strategies.cassandra"] = "kong/cluster_events/strategies/cassandra.lua",
@@ -141,10 +143,16 @@ build = {
     ["kong.runloop.handler"] = "kong/runloop/handler.lua",
     ["kong.runloop.certificate"] = "kong/runloop/certificate.lua",
     ["kong.runloop.plugins_iterator"] = "kong/runloop/plugins_iterator.lua",
-    ["kong.runloop.balancer"] = "kong/runloop/balancer.lua",
+    ["kong.runloop.balancer"] = "kong/runloop/balancer/init.lua",
+    ["kong.runloop.balancer.balancers"] = "kong/runloop/balancer/balancers.lua",
+    ["kong.runloop.balancer.healthcheckers"] = "kong/runloop/balancer/healthcheckers.lua",
+    ["kong.runloop.balancer.round_robin"] = "kong/runloop/balancer/round_robin.lua",
+    ["kong.runloop.balancer.targets"] = "kong/runloop/balancer/targets.lua",
+    ["kong.runloop.balancer.upstreams"] = "kong/runloop/balancer/upstreams.lua",
     ["kong.runloop.plugin_servers"] = "kong/runloop/plugin_servers/init.lua",
     ["kong.runloop.plugin_servers.process"] = "kong/runloop/plugin_servers/process.lua",
     ["kong.runloop.plugin_servers.mp_rpc"] = "kong/runloop/plugin_servers/mp_rpc.lua",
+    ["kong.runloop.plugin_servers.pb_rpc"] = "kong/runloop/plugin_servers/pb_rpc.lua",
 
     ["kong.workspaces"] = "kong/workspaces/init.lua",
 
@@ -213,6 +221,14 @@ build = {
     ["kong.db.migrations.operations.200_to_210"] = "kong/db/migrations/operations/200_to_210.lua",
     ["kong.db.migrations.operations.210_to_211"] = "kong/db/migrations/operations/210_to_211.lua",
     ["kong.db.migrations.operations.212_to_213"] = "kong/db/migrations/operations/212_to_213.lua",
+
+    ["kong.hybrid"] = "kong/hybrid/init.lua",
+    ["kong.hybrid.data_plane"] = "kong/hybrid/data_plane.lua",
+    ["kong.hybrid.control_plane"] = "kong/hybrid/control_plane.lua",
+    ["kong.hybrid.message"] = "kong/hybrid/message.lua",
+    ["kong.hybrid.queue"] = "kong/hybrid/queue.lua",
+    ["kong.hybrid.rpc"] = "kong/hybrid/rpc.lua",
+
 
     ["kong.pdk"] = "kong/pdk/init.lua",
     ["kong.pdk.private.checks"] = "kong/pdk/private/checks.lua",
@@ -380,5 +396,9 @@ build = {
 
     ["kong.plugins.request-termination.handler"] = "kong/plugins/request-termination/handler.lua",
     ["kong.plugins.request-termination.schema"] = "kong/plugins/request-termination/schema.lua",
+
+    ["kong.plugins.grpc-gateway.deco"] = "kong/plugins/grpc-gateway/deco.lua",
+    ["kong.plugins.grpc-gateway.handler"] = "kong/plugins/grpc-gateway/handler.lua",
+    ["kong.plugins.grpc-gateway.schema"] = "kong/plugins/grpc-gateway/schema.lua",
   }
 }

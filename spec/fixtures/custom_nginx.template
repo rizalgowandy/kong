@@ -459,6 +459,14 @@ http {
                 Kong.serve_cluster_listener()
             }
         }
+
+> if cluster_v2 then
+        location = /v2/outlet {
+            content_by_lua_block {
+                Kong.serve_cp_protocol()
+            }
+        }
+> end -- cluster_v2
     }
 > end -- role == "control_plane"
 
@@ -876,5 +884,14 @@ stream {
     }
 
     include '*.stream_mock';
+
+    server {        # ignore (and close }, to ignore content)
+        listen unix:${{PREFIX}}/stream_rpc.sock udp;
+        error_log  ${{ADMIN_ERROR_LOG}} ${{LOG_LEVEL}};
+        content_by_lua_block {
+            Kong.stream_api()
+        }
+    }
+
 }
 > end
